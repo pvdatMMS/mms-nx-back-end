@@ -11,7 +11,7 @@
  Target Server Version : 80017
  File Encoding         : 65001
 
- Date: 26/03/2020 11:22:48
+ Date: 27/03/2020 16:20:24
 */
 
 SET NAMES utf8mb4;
@@ -28,7 +28,7 @@ CREATE TABLE `camera` (
   `axisX` double DEFAULT NULL,
   `axisY` double DEFAULT NULL,
   `layout_id` int(11) DEFAULT NULL,
-  `camera_id` varchar(255) DEFAULT NULL,
+  `camera_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `status_id` int(11) DEFAULT '1',
   `createdAt` timestamp NULL DEFAULT NULL,
   `updatedAt` timestamp NULL DEFAULT NULL,
@@ -39,14 +39,8 @@ CREATE TABLE `camera` (
 -- Records of camera
 -- ----------------------------
 BEGIN;
-INSERT INTO `camera` VALUES (30, 'New Maker', 'http://210.245.35.97:7001/media/8c80a79e-7285-a051-b785-2ef7661db57a.mp4', 0.7489583333333333, 0.6993006993006993, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-23 00:52:32', '2020-03-25 21:54:03');
-INSERT INTO `camera` VALUES (34, 'New Maker', NULL, 0.8354166666666667, 0.5094905094905094, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 05:53:03', '2020-03-25 21:57:40');
-INSERT INTO `camera` VALUES (38, 'New Maker', NULL, 0.584375, 0.4955044955044955, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 22:40:57', '2020-03-25 22:40:57');
-INSERT INTO `camera` VALUES (39, 'New Maker', NULL, 0.7302083333333333, 0.5574425574425574, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 22:41:56', '2020-03-25 22:41:56');
-INSERT INTO `camera` VALUES (40, 'New Maker', NULL, 0.61875, 0.6913086913086913, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 22:42:17', '2020-03-25 22:42:17');
-INSERT INTO `camera` VALUES (41, 'New Maker', NULL, 0.46979166666666666, 0.5974025974025974, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 22:42:34', '2020-03-25 22:42:34');
-INSERT INTO `camera` VALUES (42, 'New Maker', NULL, 0.71875, 0.3756243756243756, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 22:48:13', '2020-03-25 22:48:13');
-INSERT INTO `camera` VALUES (47, 'New Maker', NULL, 0.125, 0.5074925074925075, 102, '8c80a79e-7285-a051-b785-2ef7661db57a', 1, '2020-03-25 23:51:36', '2020-03-25 23:51:36');
+INSERT INTO `camera` VALUES (30, 'New Maker', 'http://210.245.35.97:7001/media/8c80a79e-7285-a051-b785-2ef7661db57a.mp4', 0.7489583333333333, 0.6993006993006993, 101, '8c80a79e-7285-a051-b785-2ef7661db57a', 3, '2020-03-23 00:52:32', '2020-03-26 21:48:17');
+INSERT INTO `camera` VALUES (47, 'New Maker', NULL, 0.125, 0.5074925074925075, 102, '8c80a79e-7285-a051-b785-2ef7661db57a', 3, '2020-03-25 23:51:36', '2020-03-26 21:48:17');
 COMMIT;
 
 -- ----------------------------
@@ -57,20 +51,23 @@ CREATE TABLE `layouts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) DEFAULT NULL,
   `image` varchar(255) DEFAULT NULL,
-  `nx_layout_id` varchar(45) DEFAULT NULL,
+  `nx_layout_id` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   `order` int(11) DEFAULT NULL,
   `createdAt` timestamp NULL DEFAULT NULL,
   `updatedAt` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=103 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=109 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of layouts
 -- ----------------------------
 BEGIN;
-INSERT INTO `layouts` VALUES (101, 'SITE 1', '6b26975c-a3c4-a7e4-33c5-5197d9d110b8.jpg', '{34850e3d-3021-44da-a5d6-19dcdefe0c5e}', 1, 1, '2020-03-20 04:39:21', '2020-03-26 00:11:40');
-INSERT INTO `layouts` VALUES (102, 'SITE 2', '1e673801-8daa-18a3-d924-302ebdfbef33.jpg', '{ef6efb13-6a53-4e28-b4fd-7bdd0a0cacce}', 1, 2, '2020-03-20 04:39:21', '2020-03-26 00:11:40');
+INSERT INTO `layouts` VALUES (101, 'SITE 1', '6b26975c-a3c4-a7e4-33c5-5197d9d110b8.jpg', '{34850e3d-3021-44da-a5d6-19dcdefe0c5e}', 1, 1, '2020-03-20 04:39:21', '2020-03-27 05:19:46');
+INSERT INTO `layouts` VALUES (102, 'SITE 2', '1e673801-8daa-18a3-d924-302ebdfbef33.jpg', '{ef6efb13-6a53-4e28-b4fd-7bdd0a0cacce}', 1, 2, '2020-03-20 04:39:21', '2020-03-27 04:26:44');
+INSERT INTO `layouts` VALUES (106, 'SITE 3', '2e2c6ee6-7f5e-764b-9219-6bd0b4e3c044.jpg', '{d161c69b-b8b9-426b-b256-69588284484f}', 1, 3, '2020-03-27 00:44:30', '2020-03-27 04:26:44');
+INSERT INTO `layouts` VALUES (107, 'SITEN', '6b26975c-a3c4-a7e4-33c5-5197d9d110b8.jpg', '{d0d87eeb-7965-432f-a57d-2a22835173ee}', 1, 4, '2020-03-27 05:11:33', '2020-03-27 05:19:47');
+INSERT INTO `layouts` VALUES (108, 'SITEX', '6b26975c-a3c4-a7e4-33c5-5197d9d110b8.jpg', '{70c39886-f957-47a5-a848-04449b32c8f4}', 1, 5, '2020-03-27 05:18:58', '2020-03-27 05:19:47');
 COMMIT;
 
 -- ----------------------------
@@ -86,36 +83,6 @@ CREATE TABLE `settings` (
   `updatedAt` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ----------------------------
--- Table structure for status
--- ----------------------------
-DROP TABLE IF EXISTS `status`;
-CREATE TABLE `status` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(45) DEFAULT NULL,
-  `createdAt` timestamp NULL DEFAULT NULL,
-  `updatedAt` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ----------------------------
--- Table structure for test
--- ----------------------------
-DROP TABLE IF EXISTS `test`;
-CREATE TABLE `test` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `createdAt` timestamp NULL DEFAULT NULL,
-  `updatedAt` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ----------------------------
--- Records of test
--- ----------------------------
-BEGIN;
-INSERT INTO `test` VALUES (1, NULL, NULL);
-COMMIT;
 
 -- ----------------------------
 -- Table structure for users

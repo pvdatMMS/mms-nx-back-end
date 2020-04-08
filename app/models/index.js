@@ -6,8 +6,8 @@ var Sequelize = require('sequelize');
 var basename  = path.basename(__filename);
 var db        = {};
 
-var sequelize =  new Sequelize( 'nx_app', 'pvdat', 'MMS123456', {
-    host: '192.168.10.78',
+var sequelize =  new Sequelize( process.env.DB_DATABASE, process.env.DB_USERNAME, process.env.DB_PASSWORD, {
+    host: process.env.DB_HOST,
     dialect: 'mysql',
     operatorsAliases: false
 });

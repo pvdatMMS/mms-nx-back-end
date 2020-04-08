@@ -1,213 +1,126 @@
-const base64_encode = require('../../../services/base64Service')
-const { getLayouts } = require('../../../services/layoutService')
-const { getBoolmarks } = require('../../../services/nXService')
-const { getCameras, addCamera, updateCamera, deleteCamera } = require('../../../services/cameraService')
-const sqlite = require('../../../services/sqliteService')
+const { getNXBoolmarks } = require('../../../services/nXService')
+const { getCamera, createCamera, updateCamera, deleteCamera } = require('../../../services/cameraService')
+const { getImageFromNX, handleURLBookmarkFromNX } = require('../../../services/ortherService')
 const moment = require('moment')
-module.exports = {
-    add_camera: async (req, res) => {
-        try {
-            await getBoolmarks(req.body.camera_id)
-        } catch (e) {
-            return res.status(400).json({
-                'error': true,
-                'message': 'Can not find cameraId ' + req.body.camera_id,
-                // 'data': data
-            })
-        }
-        let dataTemp = []
-        let data = []
-        await addCamera(req.body)
-        let layouts = await getLayouts()
-        await sqlite.open('/Users/pvdat/Desktop/ecs.sqlite')
-        for(let i = 0; i < layouts.length; i++) {
-            const cameras = await getCameras(layouts[i].id)
-            let image_buffer = ""
-            await sqlite.each(`SELECT *
-                         FROM vms_storedFiles
-                         WHERE path='wallpapers/${layouts[i].image}'`, [], function(row) {
-                            image_buffer = row.data
-                        })
-            const obj = {
-                ...layouts[i].dataValues,
-                image: `data:image/jpeg;base64,${new Buffer.from(image_buffer).toString('base64')}`,
-                 cameras: cameras, cameraTemp: []}
-            if(i % 2 !== 0) {
-                dataTemp.push(obj)
-                data.push(dataTemp)
-                dataTemp = []
-            } else {
-                dataTemp.push(obj)
-            }
-            if(i === layouts.length - 1) {
-                data.push(dataTemp)
-            }
-        }
-        sqlite.close();
-        res.json({
-            'error': false,
-            'message': 'Add successfully',
-            'data': data
-        })
-    },
-    update_camera: async (req, res) => {
-        const cameraId = req.params.id;
-        const { id, ...dataUpdate } = req.body
-        let dataTemp = []
-        let data = []
-        await updateCamera({id: cameraId}, dataUpdate)
-        let layouts = await getLayouts()
-        await sqlite.open('/Users/pvdat/Desktop/ecs.sqlite')
-        for(let i = 0; i < layouts.length; i++) {
-            const cameras = await getCameras(layouts[i].id)
-            let image_buffer = ""
-            await sqlite.each(`SELECT *
-                         FROM vms_storedFiles
-                         WHERE path='wallpapers/${layouts[i].image}'`, [], function(row) {
-                            image_buffer = row.data
-                        })
-            const obj = {
-                ...layouts[i].dataValues,
-                image: `data:image/jpeg;base64,${new Buffer.from(image_buffer).toString('base64')}`,
-                 cameras: cameras, cameraTemp: []}
-            if(i % 2 !== 0) {
-                dataTemp.push(obj)
-                data.push(dataTemp)
-                dataTemp = []
-            } else {
-                dataTemp.push(obj)
-            }
-            if(i === layouts.length - 1) {
-                data.push(dataTemp)
-            }
-        }
-        sqlite.close();
-        res.json({
-            'error': false,
-            'message': 'Update successfully',
-            'data': data
-        })
-    },
-    delete_camera: async (req, res) => {
-        await deleteCamera({id: req.params.id})
-        res.json({
-            'error': false,
-            'message': 'Delete successfully',
-            // 'data': data
-        })
-    },
-    update_camera_status: io => async (req, res) => {
-        const cameraId = req.params.cameraId;
-        await updateCamera({camera_id: cameraId}, {
-            status_id: 3
-        })
-        let dataTemp = []
-        let data = []
-        let layouts = await getLayouts()
-        await sqlite.open('/Users/pvdat/Desktop/ecs.sqlite')
-        for(let i = 0; i < layouts.length; i++) {
-            const cameras = await getCameras(layouts[i].id)
-            let cameraData = []
-            for(let j = 0; j < cameras.length; j++) {
-              const dataValues = cameras[j].dataValues
-              const bookmark_results = await getBoolmarks(dataValues.cameraId)
-              const allBookmarks = bookmark_results.data
-              let bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4`
-              if (allBookmarks.length) {
-                const bookmark = allBookmarks[0]
-                const startTimeMs = Number(bookmark.startTimeMs)
-                const durationMs = bookmark.durationMs
-                const startTime = moment(startTimeMs).add(0, 'seconds').valueOf()
-                const endTime = moment(startTimeMs).add(durationMs).valueOf()
-                bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4?pos=${startTime}&endPos=${endTime}`
 
-                if (dataValues.statusId === 1) {
-                  bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4`
-                }
-                cameraData.push({...dataValues, url: bookmark_url, start_time: startTime, bookmarks: allBookmarks})
-              } else {
-                cameraData.push({...dataValues, url: bookmark_url, bookmarks: allBookmarks})
-              }
-            }
-            let image_buffer = ""
-            await sqlite.each(`SELECT *
-                         FROM vms_storedFiles
-                         WHERE path='wallpapers/${layouts[i].image}'`, [], function(row) {
-                            image_buffer = row.data
-                        })
-            const obj = {
-                ...layouts[i].dataValues,
-                image: `data:image/jpeg;base64,${new Buffer.from(image_buffer).toString('base64')}`,
-                 cameras: cameraData, cameraTemp: []}
-            if(i % 2 !== 0) {
-                dataTemp.push(obj)
-                data.push(dataTemp)
-                dataTemp = []
-            } else {
-                dataTemp.push(obj)
-            }
-            if(i === layouts.length - 1) {
-                data.push(dataTemp)
-            }
-        }
-        sqlite.close();
-        io.sockets.emit("UpdateStatus", data)
-    },
-    update_status: io => async (req, res) => {
-        const id = req.params.id;
-        await updateCamera({id: id}, {
-            status_id: req.body.statusId
-        })
-        let dataTemp = []
-        let data = []
-        let layouts = await getLayouts()
-        await sqlite.open('/Users/pvdat/Desktop/ecs.sqlite')
-        for(let i = 0; i < layouts.length; i++) {
-            const cameras = await getCameras(layouts[i].id)
-            let cameraData = []
-            for(let j = 0; j < cameras.length; j++) {
-              const dataValues = cameras[j].dataValues
-              const bookmark_results = await getBoolmarks(dataValues.cameraId)
-              const allBookmarks = bookmark_results.data
-              let bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4`
-              if (allBookmarks.length) {
-                const bookmark = allBookmarks[0]
-                const startTimeMs = Number(bookmark.startTimeMs)
-                const durationMs = bookmark.durationMs
-                const startTime = moment(startTimeMs).add(0, 'seconds').valueOf()
-                const endTime = moment(startTimeMs).add(durationMs).valueOf()
-                bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4?pos=${startTime}&endPos=${endTime}`
+exports.create_camera = io => async (req, res) => {
+    const nxUsername = 'admin'
+    const nxPassword = 'Admin@123'
+    const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
 
-                if (dataValues.statusId === 1) {
-                  bookmark_url = `http://210.245.35.97:7001/media/${dataValues.cameraId}.mp4`
-                }
-                cameraData.push({...dataValues, url: bookmark_url, start_time: startTime, bookmarks: allBookmarks})
-              } else {
-                cameraData.push({...dataValues, url: bookmark_url, bookmarks: allBookmarks})
-              }
-            }
-            let image_buffer = ""
-            await sqlite.each(`SELECT *
-                         FROM vms_storedFiles
-                         WHERE path='wallpapers/${layouts[i].image}'`, [], function(row) {
-                            image_buffer = row.data
-                        })
-            const obj = {
-                ...layouts[i].dataValues,
-                image: `data:image/jpeg;base64,${new Buffer.from(image_buffer).toString('base64')}`,
-                 cameras: cameraData, cameraTemp: []}
-            if(i % 2 !== 0) {
-                dataTemp.push(obj)
-                data.push(dataTemp)
-                dataTemp = []
-            } else {
-                dataTemp.push(obj)
-            }
-            if(i === layouts.length - 1) {
-                data.push(dataTemp)
-            }
-        }
-        sqlite.close();
-        io.sockets.emit("UpdateStatus", data)
+    try {
+        await getNXBoolmarks({
+            nxUsername,
+            nxPassword,
+            nxURL
+        }, req.body.camera_id)
+    } catch (e) {
+        return res.status(400).json({
+            'error': true,
+            'message': 'Can not find cameraId ' + req.body.camera_id
+        })
     }
+
+    const camera = await createCamera(req.body)
+    const { dataValues } = camera
+    io.sockets.emit("AddCamera", {...dataValues, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
+    
+    res.json({
+        'error': false,
+        'message': 'Add successfully',
+        // 'data': result
+    })
+}
+
+exports.update_camera = (io) => async (req, res) => {
+    const camera_id = req.params.id
+    const { id, ...dataUpdate } = req.body
+
+    const nxUsername = 'admin'
+    const nxPassword = 'Admin@123'
+    const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
+
+    try {
+        await getNXBoolmarks({
+            nxUsername,
+            nxPassword,
+            nxURL
+        }, req.body.camera_id)
+    } catch (e) {
+        return res.status(400).json({
+            'error': true,
+            'message': 'Can not find cameraId ' + req.body.camera_id
+        })
+    }
+
+    await updateCamera(dataUpdate, { id: camera_id })
+    const camera = await getCamera({ id: camera_id })
+    const { dataValues } = camera
+    io.sockets.emit("UpdateCamera", {...dataValues, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
+    
+    res.json({
+        'error': false,
+        'message': 'Update successfully',
+        // 'data': data
+    })
+}
+
+exports.delete_camera = io => async (req, res) => {
+    const camera = await getCamera({id: req.params.id})
+    const { dataValues } = camera
+    await deleteCamera({ id: req.params.id })
+    io.sockets.emit("DeleteCamera", dataValues)
+    res.json({
+        'error': false,
+        'message': 'Delete successfully',
+        // 'data': data
+    })
+}
+
+exports.bookmarks = io => async (req, res) => {
+    const nxUsername = 'admin'
+    const nxPassword = 'Admin@123'
+    const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
+    const camera = await getCamera({id: req.params.id})
+    const { dataValues } = camera
+    const bookmark_results = await getNXBoolmarks({
+        nxUsername,
+        nxPassword,
+        nxURL
+    }, dataValues.camera_id)
+    const bookmarks = bookmark_results.data
+    bookmarks.map(async bookmark => {
+        const period = await handleURLBookmarkFromNX(bookmark)
+        bookmark.name = `${bookmark.name} ${moment(Number(bookmark.startTimeMs)).format('DD/MM/YYYY HH:mm:ss')}`
+        bookmark.url = `http://${nxURL}/media/${dataValues.camera_id}.mp4${period}`
+        bookmark.thumbnail_url = `http://${nxURL}/ec2/cameraThumbnail?cameraId=${dataValues.camera_id}&time=${dataValues.startTimeMs}&height=100`
+    })
+    const bookmark = bookmarks[0]
+    const period = await handleURLBookmarkFromNX(bookmark, dataValues.status_id)
+    bookmarks.unshift({
+        isLive: true,
+        description: 'LIVE',
+        name: 'LIVE',
+        url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`,
+        thumbnail_url: `http://${nxURL}/ec2/cameraThumbnail?cameraId=${dataValues.camera_id}&height=100`
+    })
+    const data = {...dataValues, bookmarks: bookmarks, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4${period}`}
+
+    await updateCamera({ status_id: 1 }, { id: dataValues.id })
+    io.sockets.emit("UpdateCameraStatus", {...dataValues, status_id: 1, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
+    
+    res.json({
+        'error': false,
+        'message': 'Get successfully',
+        'data': data
+    })
+}
+
+exports.update_camera_status = io => async (req, res) => {
+    const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
+    const camera_id = req.params.camera_id
+    await updateCamera({ status_id: 3 }, { camera_id: camera_id })
+    const camera = await getCamera({ camera_id: camera_id })
+    const { dataValues } = camera
+    io.sockets.emit("UpdateCameraStatus", {...dataValues, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
 }

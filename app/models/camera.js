@@ -1,5 +1,6 @@
-module.exports = (sequelize, DataTypes) => {
-    const Camera = sequelize.define('Camera', {
+module.exports = (sequelize, DataTypes) =>
+    sequelize.define('Camera',
+        {
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
@@ -17,9 +18,4 @@ module.exports = (sequelize, DataTypes) => {
             timestamps: true,
             freezeTableName: true,
             tableName: 'camera'
-        }
-    );
-
-
-    return Camera;
-}
+        })
