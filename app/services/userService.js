@@ -1,8 +1,11 @@
 
 
-    exports.getUsers = async () => db.User.findAll(),
+exports.getUsers = async () =>
+    db.User.findAll()
 
-    exports.getUser = async criteria => db.User.findOne({where: criteria}),
-    
-    exports.createUser = async ({username, password}) => db.User.create({ username, password})
+exports.getUser = async criteria =>
+    db.User.findOne({ where: criteria })
+
+exports.createUser = async data =>
+    db.User.create(data)
 

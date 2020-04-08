@@ -1,5 +1,6 @@
-module.exports = (sequelize, DataTypes) => {
-    const Layout = sequelize.define('Layout', {
+module.exports = (sequelize, DataTypes) =>
+    sequelize.define('Layout',
+        {
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
@@ -15,9 +16,4 @@ module.exports = (sequelize, DataTypes) => {
             timestamps: true,
             freezeTableName: true,
             tableName: 'layouts'
-        }
-    );
-
-
-    return Layout;
-}
+        })
