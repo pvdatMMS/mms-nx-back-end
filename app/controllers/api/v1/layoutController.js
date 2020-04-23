@@ -1,7 +1,8 @@
 
-const { getNXLayouts } = require('../../../services/nXService')
+const { getNXLayouts, backupNXDatabase } = require('../../../services/nXService')
 const { getLayouts } = require('../../../services/layoutService')
 const { getCameras } = require('../../../services/cameraService')
+const { getSetting } = require('../../../services/settingService')
 const { removeLayoutFromNX, updateLayoutFromNX, getImageFromNX } = require('../../../services/ortherService')
 
 exports.layouts = async (req, res) => {
@@ -12,10 +13,20 @@ exports.layouts = async (req, res) => {
 
   const columnLayout = 2
   const user_id = 1
-  const nxUsername = 'admin'
-  const nxPassword = 'Admin@123'
-  const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
+  const setting = await getSetting({ user_id: user_id })
+
+  const { username, password, url } = setting
+
+  const nxUsername = username
+  const nxPassword = password
+  const nxURL = url.replace('http://', '').replace('/', '')
   
+  await backupNXDatabase({
+    nxUsername,
+    nxPassword,
+    nxURL
+  })
+
   const nxLayouts = await getNXLayouts({
     nxUsername,
     nxPassword,
@@ -62,7 +73,12 @@ exports.layouts = async (req, res) => {
 
 exports.devices = async (req, res) => {
   let data = []
-  const nxURL = '210.245.35.97:7001'.replace('http://', '').replace('/', '')
+  const user_id = 1
+  const setting = await getSetting({ user_id: user_id })
+
+  const { url } = setting
+  const nxURL = url.replace('http://', '').replace('/', '')
+
   const cameras = await getCameras({ layout_id: req.params.id })
   for (const camera of cameras) {
     const dataValues = camera.dataValues
