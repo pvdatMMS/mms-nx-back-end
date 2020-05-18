@@ -4,7 +4,7 @@ const { getLayouts } = require('../../../services/layoutService')
 const { getCameras } = require('../../../services/cameraService')
 const { getSetting } = require('../../../services/settingService')
 const { removeLayoutFromNX, updateLayoutFromNX, getImageFromNX } = require('../../../services/ortherService')
-
+const { getTrackPaths } = require('../../../services/trackPathService')
 exports.layouts = async (req, res) => {
 
   let count = 0
@@ -64,10 +64,13 @@ exports.layouts = async (req, res) => {
     if(index == layouts.length - 1 && dataTemp.length) data.push(dataTemp)
   }
 
+  const track_paths = await getTrackPaths()
+
   res.json({
     'error': false,
     'message': 'Get successfully',
-    'data': data
+    'data': data,
+    'track_paths': track_paths
   })
 }
 

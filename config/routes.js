@@ -15,7 +15,7 @@ module.exports = (app, passport, io) => {
     app.get('/device/:id/bookmarks', bookmarks(io))
     app.post('/device/create', create_camera)
     app.post('/device/:id/update', update_camera)
-    app.delete('/device/:id', delete_camera)
+    app.delete('/device/:id', delete_camera(io))
     app.get('/device/:camera_id/changeStatus', update_camera_status(io))
 
     app.get('/persons', persons)

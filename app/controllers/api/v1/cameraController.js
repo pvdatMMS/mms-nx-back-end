@@ -2,6 +2,8 @@ const { getNXBookmarks, getNXThumbnail, getNXCamera } = require('../../../servic
 const { getCamera, createCamera, updateCamera, deleteCamera } = require('../../../services/cameraService')
 const { getPerson, createPerson } = require('../../../services/personService')
 const { getSetting, updateSetting } = require('../../../services/settingService')
+const { createHistoryTrackPath, getHistoryTrackPath, getHistoryTrackPaths, updateHistoryTrackPath } = require('../../../services/historyTrackPathService')
+const { createTrackPath, getTrackPath, getTrackPaths, updateTrackPath, deleteTrackPath } = require('../../../services/trackPathService')
 const { handleURLBookmarkFromNX } = require('../../../services/ortherService')
 const moment = require('moment')
 
@@ -113,10 +115,22 @@ exports.update_camera = async (req, res) => {
     }
 }
 
-exports.delete_camera = async (req, res) => {
+exports.delete_camera = io => async (req, res) => {
     const camera = await getCamera({ id: req.params.id })
     const { dataValues } = camera
     await deleteCamera({ id: req.params.id })
+
+    let track_paths = await getTrackPaths({
+        where: {
+            [db.Sequelize.Op.or]: [{ from: camera.id }, { to: camera.id }]
+        }
+    })
+
+    for (let track_path of track_paths) {
+        await deleteTrackPath({ id: track_path.id })
+    }
+    track_paths = await getTrackPaths()
+    io.sockets.emit("UpdateTrackPath", track_paths)
     res.json({
         'error': false,
         'message': 'Delete successfully',
@@ -146,7 +160,7 @@ exports.bookmarks = io => async (req, res) => {
         const period = await handleURLBookmarkFromNX(bookmark)
         bookmark.name = `${bookmark.name} ${moment(Number(bookmark.startTimeMs)).format('DD/MM/YYYY HH:mm:ss')}`
         bookmark.url = `http://${nxURL}/media/${dataValues.camera_id}.mp4${period}`
-        bookmark.thumbnail_url = `http://172.20.10.6:8080/camerathumbnail?cameraId=${dataValues.camera_id}&time=${bookmark.startTimeMs}`
+        bookmark.thumbnail_url = `http://localhost:8080/camerathumbnail?cameraId=${dataValues.camera_id}&time=${bookmark.startTimeMs}`
     })
     const bookmark = bookmarks[0]
     const period = await handleURLBookmarkFromNX(bookmark, dataValues.status_id)
@@ -155,13 +169,34 @@ exports.bookmarks = io => async (req, res) => {
         description: 'LIVE',
         name: 'LIVE',
         url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`,
-        thumbnail_url: `http://172.20.10.6:8080/camerathumbnail?cameraId=${dataValues.camera_id}&time=${moment().valueOf()}`
+        thumbnail_url: `http://localhost:8080/camerathumbnail?cameraId=${dataValues.camera_id}&time=${moment().valueOf()}`
     })
     const data = {...dataValues, bookmarks: bookmarks, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4${period}`}
 
     await updateCamera({ status_id: 1, color: 0 }, { id: dataValues.id })
+    let track_paths = await getTrackPaths({
+        where: {
+            [db.Sequelize.Op.or]: [{ from: camera.id }, { to: camera.id }]
+        }
+    })
+
+    for (let track_path of track_paths) {
+        if(track_path.from === camera.id) {
+            const cam_from = await getCamera({id: track_path.to})
+            if(cam_from && cam_from.color !== track_path.color) {
+                await deleteTrackPath({id: track_path.id})
+            }
+        }
+        if(track_path.to === camera.id) {
+            const cam_to = await getCamera({id: track_path.from})
+            if(cam_to && cam_to.color !== track_path.color) {
+                await deleteTrackPath({id: track_path.id})
+            }
+        }
+    }
     io.sockets.emit("UpdateCameraStatus", {...dataValues, status_id: 1, color: 0, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
-    
+    track_paths = await getTrackPaths()
+    io.sockets.emit("UpdateTrackPath", track_paths)
     res.json({
         'error': false,
         'message': 'Get successfully',
@@ -170,6 +205,7 @@ exports.bookmarks = io => async (req, res) => {
 }
 
 exports.update_camera_status = io => async (req, res) => {
+
     const camera_id = req.params.camera_id
 
     const user_id = 1
@@ -181,14 +217,14 @@ exports.update_camera_status = io => async (req, res) => {
     const nxPassword = password
     const nxURL = url.replace('http://', '').replace('/', '')
 
-    const bookmark_results = await getNXBookmarks({
-        nxUsername,
-        nxPassword,
-        nxURL
-    }, camera_id)
+    // const bookmark_results = await getNXBookmarks({
+    //     nxUsername,
+    //     nxPassword,
+    //     nxURL
+    // }, camera_id)
 
-    const bookmarks = bookmark_results.data
-    const bookmark = bookmarks[0]
+    // const bookmarks = bookmark_results.data
+    const bookmark = req.body
 
     if(bookmark) {
         const { name } = bookmark
@@ -197,10 +233,99 @@ exports.update_camera_status = io => async (req, res) => {
         const namePerson =  name.substr(index)
 
         const person = await getPerson({name: namePerson})
-
         if(person) {
             if(person.status === 1) {
                 await updateCamera({ status_id: 3, color: person.color }, { camera_id: camera_id })
+
+                const camera = await getCamera({ camera_id: camera_id })
+                const { dataValues } = camera
+                io.sockets.emit("UpdateCameraStatus", { ...dataValues, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4` })
+
+                const history_track_paths = await getHistoryTrackPaths({
+                    where: {
+                        person_id: person.id
+                    },
+                    order: [['createdAt', 'DESC']]
+                })
+
+                const history_track_path = history_track_paths[0]
+
+                if(history_track_path) {
+                    const paths = JSON.parse(history_track_path.paths)
+                    const pre_camera_id = paths[paths.length - 1]
+                    if(pre_camera_id !== camera.id) {
+                        const pre_camera = await getCamera({id: pre_camera_id})
+                        if(pre_camera && pre_camera.color === person.color) {
+                            const track_path = await getTrackPath({
+                                from: {
+                                    [db.Sequelize.Op.or]: [pre_camera_id, camera.id]
+                                },
+                                to: 
+                                {
+                                    [db.Sequelize.Op.or]: [camera.id, pre_camera_id]
+                                }
+                            })
+                            if(track_path) {
+                                await updateTrackPath({
+                                    color: person.color
+                                }, {
+                                    id: track_path.id
+                                })
+                            } else {
+                                await createTrackPath({
+                                    from: pre_camera_id,
+                                    to: camera.id,
+                                    color: person.color
+                                })
+                            }
+                        }
+                    }
+                }
+                
+                const track_paths = await getTrackPaths({
+                    where: {
+
+                            [db.Sequelize.Op.or]: [{from: camera.id}, {to: camera.id}]
+                    }
+                })
+
+                for (let track_path of track_paths) {
+                    const cam_from = await getCamera({ id: track_path.from })
+                    const cam_to = await getCamera({ id: track_path.to })
+                    if (cam_from && cam_from.color !== track_path.color && cam_to && cam_to.color !== track_path.color) {
+                        await deleteTrackPath({ id: track_path.id })
+                    }
+                }
+
+                const historyTrackPath = await getHistoryTrackPath({
+                    createdAt: {
+                        [db.Sequelize.Op.gte]: moment(moment().add(7, 'hours').add(-1, 'days').format("MM/DD/YYYY") + " 17:00:01", "MM/DD/YYYY HH:mm:ss").toDate()
+                    },
+                    person_id: person.id
+                })
+
+                if (historyTrackPath) {
+                    let paths = JSON.parse(historyTrackPath.paths)
+                    if(paths[paths.length - 1] !== camera.id) {
+                        paths.push(camera.id)
+                        await updateHistoryTrackPath({
+                            paths: JSON.stringify(paths)
+                        }, {
+                            id: historyTrackPath.id
+                        })
+                    }
+                }
+                else
+                    {
+                        let paths = []
+                        paths.push(camera.id)
+                        await createHistoryTrackPath({
+                            paths: JSON.stringify(paths),
+                            color: person.color,
+                            person_id: person.id
+                        })
+                    }
+            
             }
         } else {
             await createPerson({
@@ -216,10 +341,13 @@ exports.update_camera_status = io => async (req, res) => {
         }
 
     }
-
-    const camera = await getCamera({ camera_id: camera_id })
-    const { dataValues } = camera
-    io.sockets.emit("UpdateCameraStatus", {...dataValues, url: `http://${nxURL}/media/${dataValues.camera_id}.mp4`})
+    const track_paths = await getTrackPaths()
+    io.sockets.emit("UpdateTrackPath", track_paths)
+    res.json({
+        'error': false,
+        'message': 'Update successfully',
+        // 'data': data
+    })
 }
 
 exports.camera_thumbnail = async (req, res) => {
